@@ -1,0 +1,46 @@
+# ==========================================
+# Server Configuration
+# ==========================================
+server:
+  port: 8761
+
+# ==========================================
+# Spring Framework Configuration
+# ==========================================
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: eureka-server
+
+# ==========================================
+# Service Discovery Configuration
+# ==========================================
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+
+# ==========================================
+# Actuator Management Endpoints
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ==========================================
+# OpenAPI and Swagger Configuration
+# ==========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

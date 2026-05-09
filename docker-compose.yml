@@ -1,0 +1,210 @@
+# ==========================================
+# Container Services
+# ==========================================
+services:
+  auth-db:
+    image: mysql:8.4
+    container_name: connectsphere-auth-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_auth
+    ports:
+      - "${AUTH_DB_PORT:-3307}:3306"
+    volumes:
+      - auth-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  post-db:
+    image: mysql:8.4
+    container_name: connectsphere-post-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_post
+    ports:
+      - "${POST_DB_PORT:-3308}:3306"
+    volumes:
+      - post-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  follow-db:
+    image: mysql:8.4
+    container_name: connectsphere-follow-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_follow
+    ports:
+      - "${FOLLOW_DB_PORT:-3309}:3306"
+    volumes:
+      - follow-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  comment-db:
+    image: mysql:8.4
+    container_name: connectsphere-comment-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_comment
+    ports:
+      - "${COMMENT_DB_PORT:-3310}:3306"
+    volumes:
+      - comment-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  like-db:
+    image: mysql:8.4
+    container_name: connectsphere-like-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_like
+    ports:
+      - "${LIKE_DB_PORT:-3311}:3306"
+    volumes:
+      - like-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-db:
+    image: mysql:8.4
+    container_name: connectsphere-notification-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_notification
+    ports:
+      - "${NOTIFICATION_DB_PORT:-3312}:3306"
+    volumes:
+      - notification-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  media-db:
+    image: mysql:8.4
+    container_name: connectsphere-media-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_media
+    ports:
+      - "${MEDIA_DB_PORT:-3313}:3306"
+    volumes:
+      - media-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  search-db:
+    image: mysql:8.4
+    container_name: connectsphere-search-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: connectsphere_search
+    ports:
+      - "${SEARCH_DB_PORT:-3314}:3306"
+    volumes:
+      - search-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: connectsphere-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: connectsphere-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: connectsphere-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-connectsphere}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-connectsphere}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  sonarqube:
+    image: sonarqube:26.4.0.121862-community
+    container_name: connectsphere-sonarqube
+    ports:
+      - "${SONARQUBE_PORT:-9000}:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
+
+# ==========================================
+# Persistent Volumes
+# ==========================================
+volumes:
+  auth-db-data:
+  post-db-data:
+  follow-db-data:
+  comment-db-data:
+  like-db-data:
+  notification-db-data:
+  media-db-data:
+  search-db-data:
+  es-data:
+  redis-data:
+  rabbitmq-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:

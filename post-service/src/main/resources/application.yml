@@ -1,0 +1,99 @@
+# ==========================================
+# Server Configuration
+# ==========================================
+server:
+  port: 8081
+
+# ==========================================
+# Spring Framework Configuration
+# ==========================================
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: post-service
+  datasource:
+    url: ${POST_DB_URL:jdbc:mysql://localhost:3308/connectsphere_post?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${POST_DB_USERNAME:root}
+    password: ${POST_DB_PASSWORD:root}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:connectsphere}
+    password: ${RABBITMQ_PASSWORD:connectsphere}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 110MB
+
+# ==========================================
+# Cloudinary Integration
+# ==========================================
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  folder: ${CLOUDINARY_FOLDER:connectsphere/posts}
+  max-video-duration-seconds: ${CLOUDINARY_MAX_VIDEO_DURATION_SECONDS:120}
+
+# ==========================================
+# Razorpay Payment Configuration
+# ==========================================
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID:}
+  key-secret: ${RAZORPAY_KEY_SECRET:}
+  promote-post-amount-paise: ${RAZORPAY_PROMOTE_POST_AMOUNT_PAISE:9900}
+  promote-post-duration-days: ${RAZORPAY_PROMOTE_POST_DURATION_DAYS:7}
+
+# ==========================================
+# Service Discovery Configuration
+# ==========================================
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+
+# ==========================================
+# Actuator Management Endpoints
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ==========================================
+# OpenAPI and Swagger Configuration
+# ==========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# ==========================================
+# Downstream Service Clients
+# ==========================================
+clients:
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8080}
+  notification-service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}

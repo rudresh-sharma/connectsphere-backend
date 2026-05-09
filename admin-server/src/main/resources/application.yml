@@ -1,0 +1,38 @@
+# ==========================================
+# Server Configuration
+# ==========================================
+server:
+  port: 8090
+
+# ==========================================
+# Spring Framework Configuration
+# ==========================================
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: admin-server
+  boot:
+    admin:
+      ui:
+        title: ConnectSphere Admin Server
+
+# ==========================================
+# Service Discovery Configuration
+# ==========================================
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+
+# ==========================================
+# Actuator Management Endpoints
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

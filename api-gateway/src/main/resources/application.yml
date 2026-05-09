@@ -1,0 +1,173 @@
+# ==========================================
+# Server Configuration
+# ==========================================
+server:
+  port: 8088
+
+
+# ==========================================
+# Spring Framework Configuration
+# ==========================================
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - ${GATEWAY_ALLOWED_ORIGIN:http://localhost:4200}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: '*'
+            allowCredentials: true
+      routes:
+        - id: auth-service-docs
+          uri: ${AUTH_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/auth/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: auth-service-auth
+          uri: ${AUTH_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/auth/**,/oauth2/**,/login/oauth2/**
+        - id: post-service-docs
+          uri: ${POST_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/posts/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: post-service
+          uri: ${POST_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/posts/**
+        - id: follow-service-docs
+          uri: ${FOLLOW_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/follows/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: follow-service
+          uri: ${FOLLOW_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/follows/**
+        - id: comment-service-docs
+          uri: ${COMMENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/comments/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: comment-service
+          uri: ${COMMENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/comments/**
+        - id: like-service-docs
+          uri: ${LIKE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/likes/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: like-service
+          uri: ${LIKE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/likes/**
+        - id: notification-service-docs
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/notifications/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/notifications/**
+        - id: media-service-docs
+          uri: ${MEDIA_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/media/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: media-service
+          uri: ${MEDIA_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/media/**,/stories/**,/reels/**
+        - id: search-service-docs
+          uri: ${SEARCH_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/search/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: search-service
+          uri: ${SEARCH_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/search/**,/hashtags/**
+        - id: payment-gateway-docs
+          uri: ${PAYMENT_GATEWAY_URL:http://localhost:8089}
+          predicates:
+            - Path=/payments/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+        - id: payment-gateway
+          uri: ${PAYMENT_GATEWAY_URL:http://localhost:8089}
+          predicates:
+            - Path=/payments/**
+
+# ==========================================
+# Service Discovery Configuration
+# ==========================================
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+
+# ==========================================
+# Actuator Management Endpoints
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+# ==========================================
+# OpenAPI and Swagger Configuration
+# ==========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    urls:
+      - name: API Gateway
+        url: /v3/api-docs
+      - name: Auth Service
+        url: /auth/v3/api-docs
+      - name: Post Service
+        url: /posts/v3/api-docs
+      - name: Follow Service
+        url: /follows/v3/api-docs
+      - name: Comment Service
+        url: /comments/v3/api-docs
+      - name: Like Service
+        url: /likes/v3/api-docs
+      - name: Notification Service
+        url: /notifications/v3/api-docs
+      - name: Media Service
+        url: /media/v3/api-docs
+      - name: Search Service
+        url: /search/v3/api-docs
+      - name: Payment Gateway
+        url: /payments/v3/api-docs

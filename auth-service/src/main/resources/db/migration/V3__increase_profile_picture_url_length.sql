@@ -1,0 +1,2 @@
+ALTER TABLE users
+    MODIFY COLUMN profile_pic_url VARCHAR(1000) NULL;

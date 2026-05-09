@@ -1,0 +1,98 @@
+# ==========================================
+# Server Configuration
+# ==========================================
+server:
+  port: 8085
+
+# ==========================================
+# Spring Framework Configuration
+# ==========================================
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  application:
+    name: notification-service
+  cloud:
+    openfeign:
+      okhttp:
+        enabled: true
+  datasource:
+    url: ${NOTIFICATION_DB_URL:jdbc:mysql://localhost:3312/connectsphere_notification?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${NOTIFICATION_DB_USERNAME:root}
+    password: ${NOTIFICATION_DB_PASSWORD:root}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:connectsphere}
+    password: ${RABBITMQ_PASSWORD:connectsphere}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# ==========================================
+# Downstream Service Clients
+# ==========================================
+clients:
+  auth-service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8080}
+
+# ==========================================
+# Service Discovery Configuration
+# ==========================================
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
+
+# ==========================================
+# Actuator Management Endpoints
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ==========================================
+# Application Settings
+# ==========================================
+app:
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:4200}
+  mail:
+    from: ${MAIL_FROM:noreply@connectsphere.local}
+
+# ==========================================
+# OpenAPI and Swagger Configuration
+# ==========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
