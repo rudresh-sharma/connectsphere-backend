@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import com.connectsphere.payment.dto.CreateRazorpayOrderRequest;
@@ -19,7 +18,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
@@ -35,95 +33,87 @@ class RazorpayPaymentServiceTest {
 
     @Test
     void createOrderRequiresConfiguredKeys() {
+        CreateRazorpayOrderRequest request = new CreateRazorpayOrderRequest(5000, "receipt-1");
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1")));
+                () -> service.createOrder(request));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
     void createOrderReturnsMappedResponseForSuccessfulRazorpayCall() throws Exception {
+        HttpClient client = mock(HttpClient.class);
+        service = new RazorpayPaymentService(new ObjectMapper(), client);
         ReflectionTestUtils.setField(service, "razorpayKeyId", "rzp_test_key");
         ReflectionTestUtils.setField(service, "razorpayKeySecret", "secret");
-        HttpClient client = mock(HttpClient.class);
         @SuppressWarnings("unchecked")
         HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
         when(response.statusCode()).thenReturn(200);
         when(response.body()).thenReturn("{\"id\":\"order_123\"}");
+        when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
 
-        try (MockedStatic<HttpClient> mocked = mockStatic(HttpClient.class)) {
-            mocked.when(HttpClient::newHttpClient).thenReturn(client);
-            when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        var result = service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1"));
 
-            var result = service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1"));
-
-            assertEquals("rzp_test_key", result.keyId());
-            assertEquals("order_123", result.orderId());
-            assertEquals(5000, result.amountPaise());
-            assertEquals("INR", result.currency());
-        }
+        assertEquals("rzp_test_key", result.keyId());
+        assertEquals("order_123", result.orderId());
+        assertEquals(5000, result.amountPaise());
+        assertEquals("INR", result.currency());
     }
 
     @Test
     void createOrderRejectsNonSuccessStatus() throws Exception {
+        HttpClient client = mock(HttpClient.class);
+        service = new RazorpayPaymentService(new ObjectMapper(), client);
         ReflectionTestUtils.setField(service, "razorpayKeyId", "rzp_test_key");
         ReflectionTestUtils.setField(service, "razorpayKeySecret", "secret");
-        HttpClient client = mock(HttpClient.class);
         @SuppressWarnings("unchecked")
         HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
         when(response.statusCode()).thenReturn(400);
         when(response.body()).thenReturn("{\"error\":\"bad request\"}");
+        when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        CreateRazorpayOrderRequest request = new CreateRazorpayOrderRequest(5000, "receipt-1");
 
-        try (MockedStatic<HttpClient> mocked = mockStatic(HttpClient.class)) {
-            mocked.when(HttpClient::newHttpClient).thenReturn(client);
-            when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request));
 
-            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                    () -> service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1")));
-
-            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-            assertEquals("Could not create Razorpay order", exception.getReason());
-        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Could not create Razorpay order", exception.getReason());
     }
 
     @Test
     void createOrderRejectsMissingOrderIdInResponse() throws Exception {
+        HttpClient client = mock(HttpClient.class);
+        service = new RazorpayPaymentService(new ObjectMapper(), client);
         ReflectionTestUtils.setField(service, "razorpayKeyId", "rzp_test_key");
         ReflectionTestUtils.setField(service, "razorpayKeySecret", "secret");
-        HttpClient client = mock(HttpClient.class);
         @SuppressWarnings("unchecked")
         HttpResponse<String> response = (HttpResponse<String>) mock(HttpResponse.class);
         when(response.statusCode()).thenReturn(200);
         when(response.body()).thenReturn("{\"entity\":\"order\"}");
+        when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        CreateRazorpayOrderRequest request = new CreateRazorpayOrderRequest(5000, "receipt-1");
 
-        try (MockedStatic<HttpClient> mocked = mockStatic(HttpClient.class)) {
-            mocked.when(HttpClient::newHttpClient).thenReturn(client);
-            when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(response);
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request));
 
-            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                    () -> service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1")));
-
-            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-            assertEquals("Razorpay order response did not include order id", exception.getReason());
-        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Razorpay order response did not include order id", exception.getReason());
     }
 
     @Test
     void createOrderWrapsUnexpectedClientFailure() throws Exception {
+        HttpClient client = mock(HttpClient.class);
+        service = new RazorpayPaymentService(new ObjectMapper(), client);
         ReflectionTestUtils.setField(service, "razorpayKeyId", "rzp_test_key");
         ReflectionTestUtils.setField(service, "razorpayKeySecret", "secret");
-        HttpClient client = mock(HttpClient.class);
+        when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenThrow(new RuntimeException("network down"));
+        CreateRazorpayOrderRequest request = new CreateRazorpayOrderRequest(5000, "receipt-1");
 
-        try (MockedStatic<HttpClient> mocked = mockStatic(HttpClient.class)) {
-            mocked.when(HttpClient::newHttpClient).thenReturn(client);
-            when(client.send(any(), any(HttpResponse.BodyHandler.class))).thenThrow(new RuntimeException("network down"));
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request));
 
-            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                    () -> service.createOrder(new CreateRazorpayOrderRequest(5000, "receipt-1")));
-
-            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-            assertEquals("Could not create Razorpay order", exception.getReason());
-        }
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Could not create Razorpay order", exception.getReason());
     }
 
     @Test
@@ -146,8 +136,9 @@ class RazorpayPaymentServiceTest {
 
     @Test
     void verifyPaymentRequiresConfiguredKeys() {
-        assertThrows(ResponseStatusException.class, () ->
-                service.verifyPayment(new VerifyRazorpayPaymentRequest("order_1", "pay_1", "signature")));
+        VerifyRazorpayPaymentRequest request = new VerifyRazorpayPaymentRequest("order_1", "pay_1", "signature");
+
+        assertThrows(ResponseStatusException.class, () -> service.verifyPayment(request));
     }
 
     private String hmac(String value, String secret) throws Exception {

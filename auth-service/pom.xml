@@ -128,6 +128,39 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Spring Boot main application class -->
+                        <exclude>com/connectsphere/auth/*Application.class</exclude>
+                        <!-- Spring configuration beans -->
+                        <exclude>com/connectsphere/auth/config/**</exclude>
+                        <!-- AOP logging aspect -->
+                        <exclude>com/connectsphere/auth/logging/**</exclude>
+                        <!-- Feign client interfaces and related DTOs -->
+                        <exclude>com/connectsphere/auth/client/**</exclude>
+                        <!-- Security infrastructure: OAuth2 handlers, JWT filter, UserDetailsService -->
+                        <exclude>com/connectsphere/auth/security/JwtAuthenticationFilter.class</exclude>
+                        <exclude>com/connectsphere/auth/security/CustomOAuth2UserService.class</exclude>
+                        <exclude>com/connectsphere/auth/security/CustomOidcUserService.class</exclude>
+                        <exclude>com/connectsphere/auth/security/CustomUserDetailsService.class</exclude>
+                        <exclude>com/connectsphere/auth/security/OAuth2AuthenticationSuccessHandler.class</exclude>
+                        <exclude>com/connectsphere/auth/security/OAuth2AuthenticationFailureHandler.class</exclude>
+                        <!-- DTOs and records (auto-generated accessors) -->
+                        <exclude>com/connectsphere/auth/dto/**</exclude>
+                        <!-- JPA entities (Lombok getters/setters) -->
+                        <exclude>com/connectsphere/auth/entity/**</exclude>
+                        <!-- Cloudinary storage service (requires live API credentials) -->
+                        <exclude>com/connectsphere/auth/service/impl/CloudinaryProfilePictureStorageService.class</exclude>
+                        <!-- No-op implementation (trivial delegation) -->
+                        <exclude>com/connectsphere/auth/service/impl/NoOpProfilePictureStorageService.class</exclude>
+                        <!-- OAuth signup controller (requires full OAuth2 context) -->
+                        <exclude>com/connectsphere/auth/controller/OAuthSignupController.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

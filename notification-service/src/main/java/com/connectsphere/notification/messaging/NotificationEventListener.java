@@ -33,10 +33,18 @@ public class NotificationEventListener {
     public void handleNotificationCreated(Map<String, Object> event) {
         log.info("Received notification event: {}", event);
         try {
+            Long recipientId = asLong(event.get("recipientId"));
+            Long actorId = asLong(event.get("actorId"));
+            String typeValue = asString(event.get("type"));
+            if (recipientId == null || actorId == null || typeValue == null || typeValue.isBlank()) {
+                log.warn("Skipping notification event with missing required fields: {}", event);
+                return;
+            }
+
             notificationService.createNotification(new CreateNotificationRequest(
-                    asLong(event.get("recipientId")),
-                    asLong(event.get("actorId")),
-                    NotificationType.valueOf(String.valueOf(event.get("type"))),
+                    recipientId,
+                    actorId,
+                    NotificationType.valueOf(typeValue),
                     asString(event.get("message")),
                     asLong(event.get("targetId")),
                     asString(event.get("targetType"))
@@ -54,11 +62,20 @@ public class NotificationEventListener {
 
     @RabbitListener(queues = RabbitMqConfig.WELCOME_EMAIL_QUEUE)
     public void handleWelcomeEmail(Map<String, Object> event) {
+        Long recipientId = asLong(event.get("recipientId"));
+        String email = asString(event.get("email"));
+        String username = asString(event.get("username"));
+        String fullName = asString(event.get("fullName"));
+        if (recipientId == null || isBlank(email) || isBlank(username) || isBlank(fullName)) {
+            log.warn("Skipping welcome email event with missing required fields: {}", event);
+            return;
+        }
+
         notificationService.sendWelcomeEmail(new WelcomeEmailRequest(
-                asLong(event.get("recipientId")),
-                asString(event.get("email")),
-                asString(event.get("username")),
-                asString(event.get("fullName"))
+                recipientId,
+                email,
+                username,
+                fullName
         ));
     }
 
@@ -74,5 +91,9 @@ public class NotificationEventListener {
 
     private String asString(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

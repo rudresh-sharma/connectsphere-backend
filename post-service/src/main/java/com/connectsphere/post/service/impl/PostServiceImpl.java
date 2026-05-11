@@ -56,6 +56,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -87,6 +88,7 @@ public class PostServiceImpl implements PostService {
     private static final Logger log = LoggerFactory.getLogger(PostServiceImpl.class);
     private static final Pattern MENTION_PATTERN = Pattern.compile("(?<!\\w)@([a-zA-Z0-9._-]{3,40})");
     private static final List<String> FLAGGED_KEYWORDS = List.of("spam", "scam", "hate", "abuse", "nsfw");
+    private static final String PROMOTION_STATUS_PENDING_APPROVAL = "PENDING_APPROVAL";
 
     private final BookmarkRepository bookmarkRepository;
     private final PostRepository postRepository;
@@ -99,6 +101,7 @@ public class PostServiceImpl implements PostService {
     private final MediaStorageService mediaStorageService;
     private final ObjectMapper objectMapper;
     private final CacheManager cacheManager;
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Value("${razorpay.key-id:}")
     private String razorpayKeyId;
@@ -161,6 +164,10 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public Page<PostResponse> getPublicPosts(Long viewerId, Pageable pageable) {
+        return getPublicPostsInternal(viewerId, pageable);
+    }
+
+    private Page<PostResponse> getPublicPostsInternal(Long viewerId, Pageable pageable) {
         if (viewerId != null && viewerId > 0) {
             return mapVisiblePosts(
                     postRepository.findPublicFeedExcludingAuthor(PostVisibility.PUBLIC, viewerId, pageable),
@@ -199,7 +206,7 @@ public class PostServiceImpl implements PostService {
     @Transactional(readOnly = true)
     public Page<PostResponse> getFeed(Long userId, Pageable pageable) {
         if (userId == null || userId <= 0) {
-            return getPublicPosts(null, pageable);
+            return getPublicPostsInternal(null, pageable);
         }
 
         List<Long> followingIds = loadFollowingIds(userId);
@@ -222,7 +229,7 @@ public class PostServiceImpl implements PostService {
     @Transactional(readOnly = true)
     public Page<PostResponse> searchPublicPosts(String keyword, Pageable pageable) {
         if (keyword == null || keyword.isBlank()) {
-            return getPublicPosts(null, pageable);
+            return getPublicPostsInternal(null, pageable);
         }
         return mapVisiblePosts(postRepository.searchPublicPosts(keyword.trim(), pageable), pageable);
     }
@@ -391,7 +398,7 @@ public class PostServiceImpl implements PostService {
         post.setPromoted(false);
         post.setPromotedUntil(null);
         post.setPromotionPaymentId(request.razorpayPaymentId());
-        post.setPromotionStatus("PENDING_APPROVAL");
+        post.setPromotionStatus(PROMOTION_STATUS_PENDING_APPROVAL);
         Post savedPost = postRepository.save(post);
         evictPostCache(savedPost.getPostId());
         sendPromotionPaymentReceipt(savedPost);
@@ -556,7 +563,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<PostResponse> getPendingPromotionsForAdmin() {
-        return postRepository.findByPromotionStatusAndDeletedFalseOrderByUpdatedAtDesc("PENDING_APPROVAL").stream()
+        return postRepository.findByPromotionStatusAndDeletedFalseOrderByUpdatedAtDesc(PROMOTION_STATUS_PENDING_APPROVAL).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -665,7 +672,8 @@ public class PostServiceImpl implements PostService {
     }
 
     private boolean isPromotionPendingReview(Post post) {
-        return "PENDING".equals(post.getPromotionStatus()) || "PENDING_APPROVAL".equals(post.getPromotionStatus());
+        return "PENDING".equals(post.getPromotionStatus())
+                || PROMOTION_STATUS_PENDING_APPROVAL.equals(post.getPromotionStatus());
     }
 /**
  * Performs the moderate post operation.
@@ -815,9 +823,11 @@ public class PostServiceImpl implements PostService {
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("Razorpay order creation failed: status={}, body={}", response.statusCode(), response.body());
+                int statusCode = response.statusCode();
+                String responseBody = response.body();
+                log.warn("Razorpay order creation failed: status={}, body={}", statusCode, responseBody);
                 throw new BadRequestException("Could not create Razorpay order");
             }
 
@@ -829,7 +839,11 @@ public class PostServiceImpl implements PostService {
             return id.toString();
         } catch (BadRequestException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("Razorpay order creation was interrupted for postId={}", postId, ex);
+            throw new BadRequestException("Could not create Razorpay order");
+        } catch (java.io.IOException | RuntimeException ex) {
             log.warn("Could not create Razorpay order for postId={}", postId, ex);
             throw new BadRequestException("Could not create Razorpay order");
         }
@@ -862,20 +876,29 @@ public class PostServiceImpl implements PostService {
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                Long currentPostId = post.getPostId();
+                int statusCode = response.statusCode();
+                String responseBody = response.body();
                 log.warn(
                         "Razorpay refund creation failed for postId={}: status={}, body={}",
-                        post.getPostId(),
-                        response.statusCode(),
-                        response.body()
+                        currentPostId,
+                        statusCode,
+                        responseBody
                 );
                 return false;
             }
 
-            log.info("Refund initiated for postId={} paymentId={}", post.getPostId(), post.getPromotionPaymentId());
+            Long currentPostId = post.getPostId();
+            String paymentId = post.getPromotionPaymentId();
+            log.info("Refund initiated for postId={} paymentId={}", currentPostId, paymentId);
             return true;
-        } catch (Exception ex) {
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("Refund initiation was interrupted for postId={}", post.getPostId(), ex);
+            return false;
+        } catch (java.io.IOException | RuntimeException ex) {
             log.warn("Could not initiate refund for postId={}", post.getPostId(), ex);
             return false;
         }
@@ -918,7 +941,7 @@ public class PostServiceImpl implements PostService {
         if (!isAutomatedFlagged(content)) {
             return null;
         }
-        String normalized = content == null ? "" : content.toLowerCase();
+        String normalized = content.toLowerCase();
         return FLAGGED_KEYWORDS.stream()
                 .filter(normalized::contains)
                 .findFirst()
@@ -933,7 +956,7 @@ public class PostServiceImpl implements PostService {
     private Page<PostResponse> mapVisiblePosts(Page<Post> posts, Pageable pageable) {
         List<PostResponse> visiblePosts = posts.getContent().stream()
                 .map(this::toResponseIfAuthorExists)
-                .filter(response -> response != null)
+                .filter(Objects::nonNull)
                 .toList();
         return new PageImpl<>(visiblePosts, pageable, visiblePosts.size());
     }
@@ -1075,38 +1098,22 @@ public class PostServiceImpl implements PostService {
             return;
         }
 
-        UserSummary author = loadAuthor(post);
-        String actorName = author != null && author.fullName() != null && !author.fullName().isBlank()
-                ? author.fullName()
-                : author != null && author.username() != null && !author.username().isBlank()
-                ? "@" + author.username()
-                : "Someone";
+        String actorName = resolveDisplayName(loadAuthor(post), "Someone");
 
         Set<Long> notifiedUserIds = new HashSet<>();
         for (String username : mentionUsernames) {
             try {
-                List<UserSummary> results = authServiceClient.searchUsers(username);
-                UserSummary mentionedUser = results.stream()
-                        .filter(user -> user.username() != null && user.username().equalsIgnoreCase(username))
-                        .findFirst()
-                        .orElse(null);
-
-                if (mentionedUser == null || mentionedUser.userId() == null) {
-                    continue;
+                UserSummary mentionedUser = findMentionedUser(username);
+                if (shouldNotifyMention(mentionedUser, post, notifiedUserIds)) {
+                    notificationEventPublisher.publish(new CreateNotificationRequest(
+                            mentionedUser.userId(),
+                            post.getAuthorId(),
+                            NotificationType.MENTION,
+                            actorName + " mentioned you in a post",
+                            post.getPostId(),
+                            "POST"
+                    ));
                 }
-
-                if (mentionedUser.userId().equals(post.getAuthorId()) || !notifiedUserIds.add(mentionedUser.userId())) {
-                    continue;
-                }
-
-                notificationEventPublisher.publish(new CreateNotificationRequest(
-                        mentionedUser.userId(),
-                        post.getAuthorId(),
-                        NotificationType.MENTION,
-                        actorName + " mentioned you in a post",
-                        post.getPostId(),
-                        "POST"
-                ));
             } catch (FeignException ex) {
                 log.warn(
                         "Could not notify mention @{} for postId={}: status={}, message={}",
@@ -1123,12 +1130,7 @@ public class PostServiceImpl implements PostService {
 
     private void notifyPromotionApproved(Post post, Long adminUserId) {
         try {
-            UserSummary admin = authServiceClient.getUserById(adminUserId);
-            String adminName = admin != null && admin.fullName() != null && !admin.fullName().isBlank()
-                    ? admin.fullName()
-                    : admin != null && admin.username() != null && !admin.username().isBlank()
-                    ? "@" + admin.username()
-                    : "An admin";
+            String adminName = resolveDisplayName(authServiceClient.getUserById(adminUserId), "An admin");
 
             notificationEventPublisher.publish(new CreateNotificationRequest(
                     post.getAuthorId(),
@@ -1152,12 +1154,7 @@ public class PostServiceImpl implements PostService {
 
     private void notifyPromotionRejected(Post post, Long adminUserId, boolean refundInitiated) {
         try {
-            UserSummary admin = authServiceClient.getUserById(adminUserId);
-            String adminName = admin != null && admin.fullName() != null && !admin.fullName().isBlank()
-                    ? admin.fullName()
-                    : admin != null && admin.username() != null && !admin.username().isBlank()
-                    ? "@" + admin.username()
-                    : "An admin";
+            String adminName = resolveDisplayName(authServiceClient.getUserById(adminUserId), "An admin");
 
             String message = refundInitiated
                     ? "Your promoted post was rejected by " + adminName + ". A refund has been initiated to your original payment method."
@@ -1212,6 +1209,34 @@ public class PostServiceImpl implements PostService {
         } catch (RuntimeException ex) {
             log.warn("Could not send payment receipt email for postId={}", post.getPostId(), ex);
         }
+    }
+
+    private UserSummary findMentionedUser(String username) {
+        List<UserSummary> results = authServiceClient.searchUsers(username);
+        return results.stream()
+                .filter(user -> user.username() != null && user.username().equalsIgnoreCase(username))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean shouldNotifyMention(UserSummary mentionedUser, Post post, Set<Long> notifiedUserIds) {
+        return mentionedUser != null
+                && mentionedUser.userId() != null
+                && !mentionedUser.userId().equals(post.getAuthorId())
+                && notifiedUserIds.add(mentionedUser.userId());
+    }
+
+    private String resolveDisplayName(UserSummary user, String fallback) {
+        if (user == null) {
+            return fallback;
+        }
+        if (user.fullName() != null && !user.fullName().isBlank()) {
+            return user.fullName();
+        }
+        if (user.username() != null && !user.username().isBlank()) {
+            return "@" + user.username();
+        }
+        return fallback;
     }
 
     private Set<String> extractMentionUsernames(String content) {

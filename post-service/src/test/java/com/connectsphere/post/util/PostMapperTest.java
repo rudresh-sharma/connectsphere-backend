@@ -58,7 +58,8 @@ class PostMapperTest {
                 .build();
 
         PostResponse response = PostMapper.toResponse(post, null);
+        var mediaUrls = response.mediaUrls();
 
-        assertThrows(UnsupportedOperationException.class, () -> response.mediaUrls().add("new-url"));
+        assertThrows(UnsupportedOperationException.class, () -> mediaUrls.add("new-url"));
     }
 }

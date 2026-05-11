@@ -55,7 +55,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
      * @param attributes raw provider attributes
      * @return provisioning result for the authenticated provider user
      */
-    @Transactional
     public OAuthProvisionResult provisionUser(String registrationId, Map<String, Object> attributes) {
         OAuthProfile profile = mapProfile(registrationId, attributes);
 

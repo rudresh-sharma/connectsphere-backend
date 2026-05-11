@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         String message = "Request could not be completed";
-        String causeMessage = ex.getMostSpecificCause() == null ? "" : ex.getMostSpecificCause().getMessage();
+        String causeMessage = String.valueOf(ex.getMostSpecificCause().getMessage());
 
         if (causeMessage.contains("uk_follows_follower_following")) {
             message = "User is already followed";
@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     ResponseEntity<ApiErrorResponse> handleRuntime(RuntimeException ex, HttpServletRequest request) {
-        if ("ResourceNotFoundException".equals(ex.getClass().getSimpleName())) {
+        if (ex instanceof ResourceNotFoundException) {
             return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
         }
 

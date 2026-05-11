@@ -45,6 +45,11 @@ import org.springframework.web.multipart.MultipartFile;
 public class MediaServiceImpl implements MediaService {
 
     private static final Logger log = LoggerFactory.getLogger(MediaServiceImpl.class);
+    private static final String RESOURCE_TYPE = "resource_type";
+    private static final String FOLDER = "folder";
+    private static final String SECURE_URL = "secure_url";
+    private static final String IMAGE_RESOURCE = "image";
+    private static final String VIDEO_RESOURCE = "video";
     private final MediaRepository mediaRepository;
     private final StoryRepository storyRepository;
     private final ReelRepository reelRepository;
@@ -65,13 +70,13 @@ public class MediaServiceImpl implements MediaService {
     public MediaResponse uploadMedia(Long uploaderId, Long linkedPostId, MultipartFile file) {
         String contentType = file.getContentType();
         MediaType mediaType = resolveMediaType(contentType);
-        String resourceType = mediaType == MediaType.VIDEO ? "video" : "image";
+        String resourceType = resolveCloudinaryResourceType(mediaType);
         imageModerationService.assertSafe(file);
 
         try {
             Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(),
-                    ObjectUtils.asMap("folder", cloudinaryProperties.getFolder(), "resource_type", resourceType));
-            String url = (String) result.get("secure_url");
+                    ObjectUtils.asMap(FOLDER, cloudinaryProperties.getFolder(), RESOURCE_TYPE, resourceType));
+            String url = (String) result.get(SECURE_URL);
             long sizeKb = file.getSize() / 1024;
 
             Media media = Media.builder()
@@ -126,13 +131,13 @@ public class MediaServiceImpl implements MediaService {
     public StoryResponse createStory(Long authorId, String caption, MultipartFile file) {
         String contentType = file.getContentType();
         MediaType mediaType = resolveMediaType(contentType);
-        String resourceType = mediaType == MediaType.VIDEO ? "video" : "image";
+        String resourceType = resolveCloudinaryResourceType(mediaType);
         imageModerationService.assertSafe(file);
 
         try {
             Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(),
-                    ObjectUtils.asMap("folder", cloudinaryProperties.getFolder() + "/stories", "resource_type", resourceType));
-            String url = (String) result.get("secure_url");
+                    ObjectUtils.asMap(FOLDER, cloudinaryProperties.getFolder() + "/stories", RESOURCE_TYPE, resourceType));
+            String url = (String) result.get(SECURE_URL);
 
             Story story = Story.builder()
                     .authorId(authorId).mediaUrl(url).caption(caption).mediaType(mediaType)
@@ -236,9 +241,9 @@ public class MediaServiceImpl implements MediaService {
         try {
             Map<?, ?> result = cloudinary.uploader().upload(
                     file.getBytes(),
-                    ObjectUtils.asMap("folder", cloudinaryProperties.getFolder() + "/reels", "resource_type", "video")
+                    ObjectUtils.asMap(FOLDER, cloudinaryProperties.getFolder() + "/reels", RESOURCE_TYPE, VIDEO_RESOURCE)
             );
-            String url = (String) result.get("secure_url");
+            String url = (String) result.get(SECURE_URL);
 
             Reel reel = Reel.builder()
                     .authorId(authorId)
@@ -323,13 +328,13 @@ public class MediaServiceImpl implements MediaService {
 
         List<Story> stories = storyRepository.findByAuthorIdOrderByCreatedAtDesc(userId);
         for (Story story : stories) {
-            deleteUploadedAssetByUrl(story.getMediaUrl(), story.getMediaType() == MediaType.VIDEO ? "video" : "image");
+            deleteUploadedAssetByUrl(story.getMediaUrl(), resolveCloudinaryResourceType(story.getMediaType()));
         }
         storyRepository.deleteAll(stories);
 
         List<Reel> reels = reelRepository.findByAuthorIdOrderByCreatedAtDesc(userId);
         for (Reel reel : reels) {
-            deleteUploadedAssetByUrl(reel.getVideoUrl(), "video");
+            deleteUploadedAssetByUrl(reel.getVideoUrl(), VIDEO_RESOURCE);
         }
         reelRepository.deleteAll(reels);
     }
@@ -346,7 +351,7 @@ public class MediaServiceImpl implements MediaService {
         }
 
         try {
-            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(RESOURCE_TYPE, resourceType));
         } catch (Exception ex) {
             log.warn("Could not delete Cloudinary asset for publicId={}", publicId, ex);
         }
@@ -393,9 +398,13 @@ public class MediaServiceImpl implements MediaService {
 
     private void validateVideoOnly(MultipartFile file) {
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("video/")) {
+        if (contentType == null || !contentType.startsWith(VIDEO_RESOURCE + "/")) {
             throw new BadRequestException("Only video uploads are allowed for reels");
         }
+    }
+
+    private String resolveCloudinaryResourceType(MediaType mediaType) {
+        return mediaType == MediaType.VIDEO ? VIDEO_RESOURCE : IMAGE_RESOURCE;
     }
 
     private MediaResponse toMediaResponse(Media m) {

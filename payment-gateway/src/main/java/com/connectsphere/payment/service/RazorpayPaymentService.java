@@ -17,9 +17,9 @@ import java.util.Base64;
 import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,19 +30,28 @@ import org.springframework.http.HttpStatus;
 
 
 @Service
-@RequiredArgsConstructor
-
 public class RazorpayPaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(RazorpayPaymentService.class);
 
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
     @Value("${razorpay.key-id:}")
     private String razorpayKeyId;
 
     @Value("${razorpay.key-secret:}")
     private String razorpayKeySecret;
+
+    @Autowired
+    public RazorpayPaymentService(ObjectMapper objectMapper) {
+        this(objectMapper, HttpClient.newHttpClient());
+    }
+
+    RazorpayPaymentService(ObjectMapper objectMapper, HttpClient httpClient) {
+        this.objectMapper = objectMapper;
+        this.httpClient = httpClient;
+    }
 
 /**
  * Creates order.
@@ -67,9 +76,11 @@ public class RazorpayPaymentService {
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(razorpayRequest, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(razorpayRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("Razorpay order creation failed: status={}, body={}", response.statusCode(), response.body());
+                int statusCode = response.statusCode();
+                String responseBody = response.body();
+                log.warn("Razorpay order creation failed: status={}, body={}", statusCode, responseBody);
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not create Razorpay order");
             }
 
@@ -82,7 +93,11 @@ public class RazorpayPaymentService {
             return new CreateRazorpayOrderResponse(razorpayKeyId, id.toString(), request.amountPaise(), "INR");
         } catch (ResponseStatusException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            log.warn("Razorpay order creation was interrupted for receipt={}", request.receipt(), ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not create Razorpay order");
+        } catch (java.io.IOException | RuntimeException ex) {
             log.warn("Could not create Razorpay order for receipt={}", request.receipt(), ex);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not create Razorpay order");
         }

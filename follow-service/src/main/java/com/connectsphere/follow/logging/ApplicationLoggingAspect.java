@@ -4,7 +4,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -26,7 +25,7 @@ public class ApplicationLoggingAspect {
     public Object logMethodInvocation(ProceedingJoinPoint joinPoint) throws Throwable {
         Class<?> targetClass = joinPoint.getSignature().getDeclaringType();
         Logger logger = LoggerFactory.getLogger(targetClass);
-        String methodName = ((MethodSignature) joinPoint.getSignature()).toShortString();
+        String methodName = joinPoint.getSignature().toShortString();
         Layer layer = resolveLayer(targetClass);
         int argumentCount = joinPoint.getArgs() == null ? 0 : joinPoint.getArgs().length;
         long startTime = System.nanoTime();
@@ -46,7 +45,7 @@ public class ApplicationLoggingAspect {
             return result;
         } catch (Throwable ex) {
             long elapsedMs = (System.nanoTime() - startTime) / 1_000_000;
-            logger.error("Failed {} after {} ms with {}: {}", methodName, elapsedMs, ex.getClass().getSimpleName(), ex.getMessage());
+            logger.error("Failed {} after {} ms", methodName, elapsedMs);
             throw ex;
         }
     }

@@ -11,7 +11,9 @@ import com.connectsphere.notification.dto.WelcomeEmailRequest;
 import com.connectsphere.notification.entity.Notification;
 import com.connectsphere.notification.entity.NotificationType;
 import com.connectsphere.notification.exception.BadRequestException;
+import com.connectsphere.notification.exception.NotificationDeliveryException;
 import com.connectsphere.notification.exception.ResourceNotFoundException;
+import jakarta.mail.MessagingException;
 import com.connectsphere.notification.repository.NotificationRepository;
 import com.connectsphere.notification.realtime.NotificationWebSocketHandler;
 import com.connectsphere.notification.service.NotificationService;
@@ -23,10 +25,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -210,14 +212,14 @@ public class NotificationServiceImpl implements NotificationService {
             }
         } catch (FeignException ex) {
             log.warn("Could not fetch user email for recipientId={}: {}", recipientId, ex.getMessage());
-        } catch (Exception ex) {
+        } catch (MailException ex) {
             log.warn("Could not send email to recipientId={}: {}", recipientId, ex.getMessage());
         }
     }
 
     private void sendHtmlFollowEmail(String toEmail, String subject, String message, Long recipientId) {
         try {
-            var htmlMessage = buildFollowEmailHtml(message, recipientId);
+            var htmlMessage = buildFollowEmailHtml(message);
             var mimeMessage = mailSender.createMimeMessage();
             var helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             helper.setTo(toEmail);
@@ -226,12 +228,12 @@ public class NotificationServiceImpl implements NotificationService {
             helper.setFrom(mailFrom);
             mailSender.send(mimeMessage);
             log.info("HTML follow email sent successfully to recipientId={}", recipientId);
-        } catch (Exception ex) {
+        } catch (MessagingException | MailException ex) {
             log.warn("Could not send HTML follow email to recipientId={}: {}", recipientId, ex.getMessage());
         }
     }
 
-    private String buildFollowEmailHtml(String message, Long recipientId) {
+    private String buildFollowEmailHtml(String message) {
         String profileUrl = frontendUrl + "/profile/" + message.replace(" started following you", "").trim();
         String dashboardUrl = frontendUrl + "/dashboard";
 
@@ -327,18 +329,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendWelcomeEmail(WelcomeEmailRequest request) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(request.email());
-            message.setFrom(mailFrom);
-            message.setSubject("Welcome to ConnectSphere");
-            message.setText(buildWelcomeEmailBody(request));
-            mailSender.send(message);
-            log.info("Welcome email sent to {} for recipientId={}", request.email(), request.recipientId());
-        } catch (Exception ex) {
-            log.warn("Could not send welcome email to recipientId={}: {}", request.recipientId(), ex.getMessage());
-            throw ex;
-        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(request.email());
+        message.setFrom(mailFrom);
+        message.setSubject("Welcome to ConnectSphere");
+        message.setText(buildWelcomeEmailBody(request));
+        mailSender.send(message);
+        log.info("Welcome email sent to {} for recipientId={}", request.email(), request.recipientId());
     }
 /**
  * Sends payment receipt email.
@@ -356,14 +353,8 @@ public class NotificationServiceImpl implements NotificationService {
             helper.setText(buildPaymentReceiptEmailBody(request), true);
             mailSender.send(message);
             log.info("Payment receipt email sent to {} for recipientId={} postId={}", request.email(), request.recipientId(), request.postId());
-        } catch (Exception ex) {
-            log.warn(
-                    "Could not send payment receipt email to recipientId={} postId={}: {}",
-                    request.recipientId(),
-                    request.postId(),
-                    ex.getMessage()
-            );
-            throw new RuntimeException("Could not send payment receipt email", ex);
+        } catch (MessagingException | MailException ex) {
+            throw new NotificationDeliveryException("Could not send payment receipt email", ex);
         }
     }
 /**

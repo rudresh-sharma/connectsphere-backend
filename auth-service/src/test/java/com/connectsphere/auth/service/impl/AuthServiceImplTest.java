@@ -129,10 +129,10 @@ class AuthServiceImplTest {
         assertEquals("rudresh", response.user().username());
         verify(userRepository).save(any(User.class));
         verify(notificationClient).sendWelcomeEmail(
-                eq(1L),
-                eq("rudresh@example.com"),
-                eq("rudresh"),
-                eq("Rudresh Sharma")
+                1L,
+                "rudresh@example.com",
+                "rudresh",
+                "Rudresh Sharma"
         );
     }
 
@@ -516,7 +516,7 @@ class AuthServiceImplTest {
         });
         when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
         doThrow(new RuntimeException("mail down")).when(notificationClient)
-                .sendWelcomeEmail(eq(3L), eq("anuj@example.com"), eq("anuj"), eq("Anuj"));
+                .sendWelcomeEmail(3L, "anuj@example.com", "anuj", "Anuj");
 
         AuthResponse response = authService.register(request);
 

@@ -20,6 +20,7 @@ import com.connectsphere.notification.dto.WelcomeEmailRequest;
 import com.connectsphere.notification.entity.Notification;
 import com.connectsphere.notification.entity.NotificationType;
 import com.connectsphere.notification.exception.BadRequestException;
+import com.connectsphere.notification.exception.NotificationDeliveryException;
 import com.connectsphere.notification.exception.ResourceNotFoundException;
 import com.connectsphere.notification.realtime.NotificationWebSocketHandler;
 import com.connectsphere.notification.repository.NotificationRepository;
@@ -98,6 +99,7 @@ class NotificationServiceImplTest {
             return notification;
         });
         when(authServiceClient.getUserById(2L)).thenReturn(new UserSummary(2L, "anuj", "Anuj", "anuj@example.com", null, true));
+        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage(Session.getInstance(new Properties())));
 
         service.createNotification(new CreateNotificationRequest(
                 2L,
@@ -108,7 +110,7 @@ class NotificationServiceImplTest {
                 "USER"
         ));
 
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(mailSender).send(any(MimeMessage.class));
     }
 
     @Test
@@ -258,9 +260,9 @@ class NotificationServiceImplTest {
     @Test
     void sendWelcomeEmailPropagatesMailFailure() {
         doThrow(new RuntimeException("mail down")).when(mailSender).send(any(SimpleMailMessage.class));
+        WelcomeEmailRequest request = new WelcomeEmailRequest(2L, "anuj@example.com", "anuj", "Anuj");
 
-        assertThrows(RuntimeException.class,
-                () -> service.sendWelcomeEmail(new WelcomeEmailRequest(2L, "anuj@example.com", "anuj", "Anuj")));
+        assertThrows(RuntimeException.class, () -> service.sendWelcomeEmail(request));
     }
 
     @Test
@@ -287,9 +289,9 @@ class NotificationServiceImplTest {
 
     @Test
     void sendPaymentReceiptEmailWrapsFailure() {
-        when(mailSender.createMimeMessage()).thenThrow(new RuntimeException("mail down"));
+        when(mailSender.createMimeMessage()).thenThrow(new org.springframework.mail.MailPreparationException("mail down"));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        NotificationDeliveryException exception = assertThrows(NotificationDeliveryException.class,
                 () -> service.sendPaymentReceiptEmail(new PaymentReceiptEmailRequest(
                         2L,
                         "anuj@example.com",

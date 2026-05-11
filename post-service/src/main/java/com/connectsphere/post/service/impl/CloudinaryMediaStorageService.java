@@ -26,6 +26,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 public class CloudinaryMediaStorageService implements MediaStorageService {
 
+    private static final String RESOURCE_TYPE = "resource_type";
+    private static final String IMAGE_RESOURCE = "image";
+    private static final String VIDEO_RESOURCE = "video";
+
     private final Cloudinary cloudinary;
     private final CloudinaryProperties properties;
     private final ImageModerationService imageModerationService;
@@ -45,17 +49,17 @@ public class CloudinaryMediaStorageService implements MediaStorageService {
                     file.getBytes(),
                     ObjectUtils.asMap(
                             "folder", properties.getFolder(),
-                            "resource_type", "auto",
+                            RESOURCE_TYPE, "auto",
                             "use_filename", true,
                             "unique_filename", true
                     )
             );
 
-            String resourceType = asString(result.get("resource_type"));
+            String resourceType = asString(result.get(RESOURCE_TYPE));
             String publicId = asString(result.get("public_id"));
             Double durationSeconds = asDouble(result.get("duration"));
 
-            if ("video".equals(resourceType)
+            if (VIDEO_RESOURCE.equals(resourceType)
                     && durationSeconds != null
                     && durationSeconds > properties.getMaxVideoDurationSeconds()) {
                 deleteUploadedAsset(publicId, resourceType);
@@ -116,7 +120,7 @@ public class CloudinaryMediaStorageService implements MediaStorageService {
         try {
             cloudinary.uploader().destroy(
                     publicId,
-                    ObjectUtils.asMap("resource_type", resourceType == null ? "image" : resourceType)
+                    ObjectUtils.asMap(RESOURCE_TYPE, resourceType == null ? IMAGE_RESOURCE : resourceType)
             );
         } catch (IOException ignored) {
             // Upload validation already failed; cleanup failure should not hide the user-facing reason.
@@ -126,9 +130,9 @@ public class CloudinaryMediaStorageService implements MediaStorageService {
     private String inferResourceType(String mediaUrl) {
         String lowerUrl = mediaUrl.toLowerCase();
         if (lowerUrl.matches(".*\\.(mp4|mov|avi|mkv|webm|ogg)(\\?.*)?$")) {
-            return "video";
+            return VIDEO_RESOURCE;
         }
-        return "image";
+        return IMAGE_RESOURCE;
     }
 
     private String extractPublicId(String mediaUrl) {

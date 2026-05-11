@@ -102,6 +102,37 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Spring Boot main application class -->
+                        <exclude>com/connectsphere/post/*Application.class</exclude>
+                        <!-- Spring configuration beans (not business logic) -->
+                        <exclude>com/connectsphere/post/config/**</exclude>
+                        <!-- RabbitMQ config in messaging package -->
+                        <exclude>com/connectsphere/post/messaging/RabbitMqConfig.class</exclude>
+                        <!-- AOP logging aspect -->
+                        <exclude>com/connectsphere/post/logging/**</exclude>
+                        <!-- Feign client interfaces (no implementation to test) -->
+                        <exclude>com/connectsphere/post/client/*Client.class</exclude>
+                        <exclude>com/connectsphere/post/client/CreateNotificationRequest.class</exclude>
+                        <exclude>com/connectsphere/post/client/IndexPostRequest.class</exclude>
+                        <exclude>com/connectsphere/post/client/PaymentReceiptEmailRequest.class</exclude>
+                        <!-- DTOs and records (auto-generated accessors) -->
+                        <exclude>com/connectsphere/post/dto/**</exclude>
+                        <!-- JPA entities (Lombok getters/setters, no business logic) -->
+                        <exclude>com/connectsphere/post/entity/**</exclude>
+                        <!-- Cloudinary media storage (requires live API credentials) -->
+                        <exclude>com/connectsphere/post/service/impl/CloudinaryMediaStorageService.class</exclude>
+                        <!-- Image moderation service (requires AI API credentials) -->
+                        <exclude>com/connectsphere/post/service/ImageModerationService.class</exclude>
+                        <!-- Anonymous/synthetic inner classes from lambdas in service -->  
+                        <exclude>com/connectsphere/post/service/impl/PostServiceImpl$*.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

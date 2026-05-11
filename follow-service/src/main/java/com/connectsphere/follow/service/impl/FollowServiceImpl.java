@@ -175,10 +175,7 @@ public class FollowServiceImpl implements FollowService {
     @Override
     @Transactional(readOnly = true)
     public List<Long> getFollowingIds(Long userId) {
-        return followRepository.findByFollowerIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
-                .stream()
-                .map(Follow::getFollowingId)
-                .toList();
+        return loadFollowingIds(userId);
     }
 /**
  * Returns mutual following ids.
@@ -207,7 +204,7 @@ public class FollowServiceImpl implements FollowService {
             throw new BadRequestException("userId is required");
         }
 
-        Set<Long> excludedUserIds = new LinkedHashSet<>(getFollowingIds(userId));
+        Set<Long> excludedUserIds = new LinkedHashSet<>(loadFollowingIds(userId));
         excludedUserIds.add(userId);
 
         return followRepository.findSuggestedUserIds(userId, excludedUserIds, pageable)
@@ -234,6 +231,13 @@ public class FollowServiceImpl implements FollowService {
         if (followerId.equals(followingId)) {
             throw new BadRequestException("Users cannot follow themselves");
         }
+    }
+
+    private List<Long> loadFollowingIds(Long userId) {
+        return followRepository.findByFollowerIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
+                .stream()
+                .map(Follow::getFollowingId)
+                .toList();
     }
 
     private void evictFollowCaches(Long followerId, Long followingId) {

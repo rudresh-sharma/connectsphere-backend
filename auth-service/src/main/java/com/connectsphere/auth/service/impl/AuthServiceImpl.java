@@ -48,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
+    private static final String USER_NOT_FOUND = "User not found";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -331,7 +332,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserResponse setUserActiveStatus(Long userId, boolean active) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         if (isSystemAdmin(user) && !active) {
             throw new BadRequestException("System admin cannot be deactivated");
         }
@@ -348,7 +349,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void deleteUserByAdmin(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         if (isSystemAdmin(user)) {
             throw new BadRequestException("System admin cannot be deleted");
         }
@@ -386,12 +387,12 @@ public class AuthServiceImpl implements AuthService {
         String value = emailOrUsername.trim();
         return userRepository.findByEmail(value.toLowerCase())
                 .or(() -> userRepository.findByUsername(value))
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
     }
 
     private User findActiveByUsername(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new BadRequestException("Account is deactivated");
         }
@@ -400,7 +401,7 @@ public class AuthServiceImpl implements AuthService {
 
     private User findActiveByUserId(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND));
         if (!user.isActive()) {
             throw new BadRequestException("Account is deactivated");
         }

@@ -3,6 +3,7 @@ package com.connectsphere.media.service;
 import com.connectsphere.media.exception.BadRequestException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -41,7 +42,8 @@ public class ImageModerationService {
  * @param file uploaded file
  */
     public void assertSafe(MultipartFile file) {
-        if (file == null || file.getContentType() == null || !file.getContentType().startsWith("image/")) {
+        String contentType = file == null ? null : file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
             return;
         }
         if (googleVisionApiKey == null || googleVisionApiKey.isBlank()) {
@@ -79,7 +81,9 @@ public class ImageModerationService {
             }
         } catch (BadRequestException ex) {
             throw ex;
-        } catch (Exception ignored) {
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } catch (IOException | RuntimeException ignored) {
             // Moderation provider failures should not block local development uploads.
         }
     }

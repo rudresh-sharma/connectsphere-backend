@@ -21,6 +21,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationWebSocketHandler.class);
+    private static final String USER_ID_ATTRIBUTE = "userId";
 
     private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<Long, Set<WebSocketSession>> sessionsByUser = new ConcurrentHashMap<>();
@@ -41,7 +42,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        session.getAttributes().put("userId", userId);
+        session.getAttributes().put(USER_ID_ATTRIBUTE, userId);
         sessionsByUser.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
     }
 /**
@@ -52,7 +53,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        Object userId = session.getAttributes().get("userId");
+        Object userId = session.getAttributes().get(USER_ID_ATTRIBUTE);
         if (userId instanceof Long id) {
             Set<WebSocketSession> sessions = sessionsByUser.get(id);
             if (sessions != null) {
@@ -105,7 +106,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
         for (String parameter : uri.getQuery().split("&")) {
             String[] parts = parameter.split("=", 2);
-            if (parts.length == 2 && "userId".equals(parts[0])) {
+            if (parts.length == 2 && USER_ID_ATTRIBUTE.equals(parts[0])) {
                 try {
                     return Long.parseLong(parts[1]);
                 } catch (NumberFormatException ex) {
