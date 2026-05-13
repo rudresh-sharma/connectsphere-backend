@@ -74,6 +74,13 @@ eureka:
 # Actuator Management Endpoints
 # ==========================================
 management:
+  health:
+    mail:
+      enabled: ${MANAGEMENT_HEALTH_MAIL_ENABLED:false}
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
   endpoints:
     web:
       exposure:
