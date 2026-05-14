@@ -1,5 +1,12 @@
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /workspace
+
+COPY . .
+
+RUN mvn -pl comment-service -am package -DskipTests
+
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY comment-service/target/comment-service-*.jar app.jar
-EXPOSE 8082
+COPY --from=build /workspace/comment-service/target/comment-service-*.jar app.jar
+EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "app.jar"]

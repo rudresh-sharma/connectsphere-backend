@@ -1,5 +1,12 @@
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /workspace
+
+COPY . .
+
+RUN mvn -pl api-gateway -am package -DskipTests
+
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY api-gateway/target/api-gateway-*.jar app.jar
+COPY --from=build /workspace/api-gateway/target/api-gateway-*.jar app.jar
 EXPOSE 8088
 ENTRYPOINT ["java", "-jar", "app.jar"]

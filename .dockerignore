@@ -1,0 +1,10 @@
+.git
+.github
+.local-runners
+.settings
+target
+**/target
+.env
+docker-compose.yml
+run-local-services.ps1
+run-services.ps1
