@@ -2,7 +2,7 @@
 # Server Configuration
 # ==========================================
 server:
-  port: 8761
+  port: ${SERVER_PORT:${PORT:8761}}
 
 # ==========================================
 # Spring Framework Configuration
@@ -25,7 +25,7 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka/}
   instance:
-    hostname: ${EUREKA_HOSTNAME:localhost}
+    hostname: ${EUREKA_HOSTNAME:${RENDER_EXTERNAL_HOSTNAME:localhost}}
 
 # ==========================================
 # Actuator Management Endpoints

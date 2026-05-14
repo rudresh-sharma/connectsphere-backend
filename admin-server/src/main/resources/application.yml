@@ -2,7 +2,7 @@
 # Server Configuration
 # ==========================================
 server:
-  port: 8090
+  port: ${SERVER_PORT:${PORT:8090}}
 
 # ==========================================
 # Spring Framework Configuration
