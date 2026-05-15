@@ -6,7 +6,10 @@ import com.connectsphere.auth.security.CustomUserDetailsService;
 import com.connectsphere.auth.security.JwtAuthenticationFilter;
 import com.connectsphere.auth.security.OAuth2AuthenticationFailureHandler;
 import com.connectsphere.auth.security.OAuth2AuthenticationSuccessHandler;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -42,6 +45,7 @@ public class SecurityConfig {
     private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
     private final OAuth2AuthenticationFailureHandler oauth2FailureHandler;
+    private final String allowedOrigins;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -49,7 +53,8 @@ public class SecurityConfig {
             CustomOAuth2UserService customOAuth2UserService,
             CustomOidcUserService customOidcUserService,
             OAuth2AuthenticationSuccessHandler oauth2SuccessHandler,
-            OAuth2AuthenticationFailureHandler oauth2FailureHandler
+            OAuth2AuthenticationFailureHandler oauth2FailureHandler,
+            @Value("${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}") String allowedOrigins
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
@@ -57,6 +62,7 @@ public class SecurityConfig {
         this.customOidcUserService = customOidcUserService;
         this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.oauth2FailureHandler = oauth2FailureHandler;
+        this.allowedOrigins = allowedOrigins;
     }
 
     /**
@@ -156,10 +162,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "http://127.0.0.1:4200"
-        ));
+        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList()));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         configuration.setExposedHeaders(List.of("Authorization"));
