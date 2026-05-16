@@ -49,11 +49,18 @@ jobs:
     needs: backend
     if: >-
       github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
-      secrets.AWS_EC2_HOST != '' &&
-      secrets.AWS_EC2_USER != '' &&
-      secrets.AWS_EC2_SSH_KEY != ''
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
+      - name: Validate AWS deploy secrets
+        env:
+          AWS_EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+          AWS_EC2_USER: ${{ secrets.AWS_EC2_USER }}
+          AWS_EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+        run: |
+          test -n "$AWS_EC2_HOST"
+          test -n "$AWS_EC2_USER"
+          test -n "$AWS_EC2_SSH_KEY"
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
