@@ -17,3 +17,13 @@ spring:
 eureka:
   client:
     enabled: false
+
+app:
+  admin:
+    username: admin
+    email: admin@test.connectsphere.local
+    password: TestAdminPass123
+    full-name: Test Admin
+  jwt:
+    secret: Y29ubmVjdHNwaGVyZS10ZXN0LWp3dC1zZWNyZXQtZm9yLWNpLWFuZC1sb2NhbA==
+    expiration-seconds: 86400
