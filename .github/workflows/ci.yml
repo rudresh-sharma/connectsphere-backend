@@ -40,18 +40,23 @@ jobs:
     if: >-
       github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    env:
+      AWS_EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+      AWS_EC2_USER: ${{ secrets.AWS_EC2_USER }}
+      AWS_EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
     steps:
-      - name: Validate AWS deploy secrets
-        env:
-          AWS_EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
-          AWS_EC2_USER: ${{ secrets.AWS_EC2_USER }}
-          AWS_EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+      - name: Check AWS deploy secrets
+        id: aws-secrets
         run: |
-          test -n "$AWS_EC2_HOST"
-          test -n "$AWS_EC2_USER"
-          test -n "$AWS_EC2_SSH_KEY"
+          if [ -n "$AWS_EC2_HOST" ] && [ -n "$AWS_EC2_USER" ] && [ -n "$AWS_EC2_SSH_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "AWS deploy skipped because one or more required GitHub secrets are missing."
+          fi
 
       - name: Deploy over SSH
+        if: steps.aws-secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.2.0
         env:
           BRANCH_NAME: ${{ github.ref_name }}
