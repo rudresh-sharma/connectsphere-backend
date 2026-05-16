@@ -11,23 +11,7 @@ jobs:
   backend:
     name: Backend build and tests
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: connectsphere_auth
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     env:
-      AUTH_DB_URL: jdbc:mysql://127.0.0.1:3306/connectsphere_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      AUTH_DB_USERNAME: root
-      AUTH_DB_PASSWORD: root
       EUREKA_ENABLED: "false"
     steps:
       - name: Checkout
@@ -45,17 +29,6 @@ jobs:
           if [ -f .env ]; then
             mv .env .env.ci.bak
           fi
-
-      - name: Wait for MySQL
-        run: |
-          for i in {1..30}; do
-            if (echo > /dev/tcp/127.0.0.1/3306) >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "MySQL did not become reachable on 127.0.0.1:3306 in time" >&2
-          exit 1
 
       - name: Test backend
         run: mvn test
