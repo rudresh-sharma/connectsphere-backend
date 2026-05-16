@@ -169,7 +169,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.USER_PROFILES_CACHE, key = "#username")
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILES_CACHE, key = "#p0")
     public UserResponse getProfile(String username) {
         return UserMapper.toResponse(findActiveByUsername(username));
     }
