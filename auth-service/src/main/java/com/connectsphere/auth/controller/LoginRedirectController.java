@@ -33,6 +33,6 @@ public class LoginRedirectController {
 
     @GetMapping("/auth/oauth2-login")
     public String oauth2Login() {
-        return "redirect:" + frontendLoginUrl;
+        return "redirect:/oauth2/authorization/google";
     }
 }

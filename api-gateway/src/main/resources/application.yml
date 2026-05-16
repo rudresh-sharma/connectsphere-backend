@@ -3,6 +3,7 @@
 # ==========================================
 server:
   port: ${SERVER_PORT:${PORT:8088}}
+  forward-headers-strategy: framework
 
 
 # ==========================================

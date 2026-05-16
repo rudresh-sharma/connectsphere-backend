@@ -3,6 +3,7 @@
 # ==========================================
 server:
   port: ${SERVER_PORT:${PORT:8080}}
+  forward-headers-strategy: framework
 
 # ==========================================
 # Spring Framework Configuration
