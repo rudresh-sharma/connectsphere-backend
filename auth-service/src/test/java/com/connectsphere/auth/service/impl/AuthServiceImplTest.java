@@ -45,6 +45,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestClientException;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
@@ -454,6 +455,24 @@ class AuthServiceImplTest {
         assertEquals(33L, response.totalPosts());
         assertEquals(2, response.trendingHashtags().size());
         assertEquals("java", response.trendingHashtags().get(0).tag());
+    }
+
+    @Test
+    void getAdminAnalyticsFallsBackWhenDownstreamServicesFail() {
+        when(userRepository.count()).thenReturn(12L);
+        when(userRepository.countByIsActiveTrue()).thenReturn(10L);
+        when(userRepository.countByUpdatedAtAfter(any(Instant.class))).thenReturn(4L);
+        when(postAdminClient.countPosts()).thenThrow(new RestClientException("post-service unavailable"));
+        when(searchAdminClient.getTrendingHashtags(10))
+                .thenThrow(new RestClientException("search-service unavailable"));
+
+        AdminAnalyticsResponse response = authService.getAdminAnalytics();
+
+        assertEquals(12L, response.totalUsers());
+        assertEquals(10L, response.activeUsers());
+        assertEquals(4L, response.dailyActiveUsers());
+        assertEquals(0L, response.totalPosts());
+        assertTrue(response.trendingHashtags().isEmpty());
     }
 
     @Test

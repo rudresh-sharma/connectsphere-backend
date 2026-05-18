@@ -37,6 +37,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
 /**
  * Implements Auth business operations.
  */
@@ -366,21 +367,40 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AdminAnalyticsResponse getAdminAnalytics() {
-        List<AdminAnalyticsResponse.TrendingHashtagSummary> trendingHashtags = searchAdminClient.getTrendingHashtags(10).stream()
-                .map(hashtag -> new AdminAnalyticsResponse.TrendingHashtagSummary(
-                        hashtag.hashtagId(),
-                        hashtag.tag(),
-                        hashtag.postCount()
-                ))
-                .toList();
+        List<AdminAnalyticsResponse.TrendingHashtagSummary> trendingHashtags = fetchTrendingHashtags();
+        long totalPosts = fetchTotalPosts();
 
         return new AdminAnalyticsResponse(
                 userRepository.count(),
                 userRepository.countByIsActiveTrue(),
                 userRepository.countByUpdatedAtAfter(Instant.now().minusSeconds(86400)),
-                postAdminClient.countPosts(),
+                totalPosts,
                 trendingHashtags
         );
+    }
+
+    private List<AdminAnalyticsResponse.TrendingHashtagSummary> fetchTrendingHashtags() {
+        try {
+            return searchAdminClient.getTrendingHashtags(10).stream()
+                    .map(hashtag -> new AdminAnalyticsResponse.TrendingHashtagSummary(
+                            hashtag.hashtagId(),
+                            hashtag.tag(),
+                            hashtag.postCount()
+                    ))
+                    .toList();
+        } catch (RestClientException ex) {
+            log.warn("Unable to load trending hashtags for admin analytics: {}", ex.getMessage());
+            return List.of();
+        }
+    }
+
+    private long fetchTotalPosts() {
+        try {
+            return postAdminClient.countPosts();
+        } catch (RestClientException ex) {
+            log.warn("Unable to load total post count for admin analytics: {}", ex.getMessage());
+            return 0L;
+        }
     }
 
     private User findByEmailOrUsername(String emailOrUsername) {

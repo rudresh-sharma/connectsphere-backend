@@ -8,7 +8,6 @@ import com.connectsphere.comment.dto.ResolveCommentReportRequest;
 import com.connectsphere.comment.dto.UpdateCommentRequest;
 import com.connectsphere.comment.service.CommentService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,12 +27,15 @@ import java.util.List;
 
 
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/comments")
 
 public class CommentController {
 
     private final CommentService commentService;
+
+    public CommentController(CommentService commentService) {
+        this.commentService = commentService;
+    }
 /**
  * Handles the comment request.
  * @param request request payload

@@ -94,6 +94,8 @@ cloudinary:
 clients:
   post-service:
     url: ${POST_SERVICE_URL:http://localhost:8081}
+  search-service:
+    url: ${SEARCH_SERVICE_URL:http://localhost:8087}
   follow-service:
     url: ${FOLLOW_SERVICE_URL:http://localhost:8082}
   notification-service:
