@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 /**
  * Performs the api gateway OpenAPI operation.
- * @return resulting value
+ * @return resulting value just a debugging
  */
 
     @Bean
